@@ -337,7 +337,7 @@ func (u *Users) Create(ctx context.Context, in CreateInput, meta Meta) (*CreateR
 	if err != nil {
 		return nil, E(500, "ENCRYPTION_FAILED", "failed to encrypt password")
 	}
-	op := &store.Operation{RequestID: requestID, Kind: "user.create", TargetID: in.UserID, RequestHash: hash, Status: 0, ExpireAt: time.Now().UTC().Add(24 * time.Hour)}
+	op := &store.Operation{RequestID: requestID, Kind: "user.create", TargetID: in.UserID, RequestHash: security.SHA256Hex(hash), Status: 0, ExpireAt: time.Now().UTC().Add(24 * time.Hour)}
 	var result CreateResult
 	err = u.s.Store.WithTx(ctx, func(tx *sql.Tx) error {
 		if err := u.s.Store.BeginOperation(ctx, op, tx); err != nil {
@@ -406,7 +406,7 @@ func (u *Users) ResetPassword(ctx context.Context, userID, password, reason, req
 	if err != nil {
 		return nil, E(500, "ENCRYPTION_FAILED", "failed to encrypt password")
 	}
-	op := &store.Operation{RequestID: requestID, Kind: "user.reset_password", TargetID: userID, RequestHash: hash, Status: 0, ExpireAt: time.Now().UTC().Add(24 * time.Hour)}
+	op := &store.Operation{RequestID: requestID, Kind: "user.reset_password", TargetID: userID, RequestHash: security.SHA256Hex(hash), Status: 0, ExpireAt: time.Now().UTC().Add(24 * time.Hour)}
 	err = u.s.Store.WithTx(ctx, func(tx *sql.Tx) error {
 		if err := u.s.Store.BeginOperation(ctx, op, tx); err != nil {
 			return err
