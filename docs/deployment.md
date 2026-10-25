@@ -121,6 +121,40 @@ sudo systemctl status tenon-ops --no-pager
 
 `deploy/nginx.conf` 中的 `allow 203.0.113.10` 必须替换为你的办公/VPN 出口；不要 `allow all`。
 
+## 5a. 无域名/TLS 的私有访问（当前推荐）
+
+如果没有域名/证书，不要直接把 7200 暴露公网。服务已经绑定 `127.0.0.1:7200`，从 Mac 建 SSH 隧道即可：
+
+```bash
+ssh -i ~/.ssh/mac1.pem -N -L 7200:127.0.0.1:7200 ubuntu@<server>
+# 浏览器打开 http://127.0.0.1:7200
+```
+
+此时服务器配置应使用：
+
+```yaml
+mode: remote
+exposure: private
+listen: 127.0.0.1:7200
+public_url: http://127.0.0.1:7200
+security:
+  cookie_secure: false
+  allowed_origins: ["http://127.0.0.1:7200"]
+  allowed_hosts: ["127.0.0.1:7200"]
+```
+
+这是“远程部署 + 端到端加密隧道”，不是公网 HTTPS。等有域名/证书后，改成：
+
+```yaml
+public_url: https://admin.example.com
+security:
+  cookie_secure: true
+  allowed_origins: ["https://admin.example.com"]
+  allowed_hosts: ["admin.example.com"]
+```
+
+再启用 nginx server block（见第 5 节），并重启 `tenon-ops`。
+
 ## 6. 首次登录与自检
 
 ```bash
