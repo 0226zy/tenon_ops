@@ -142,7 +142,7 @@ func (u *Users) Get(ctx context.Context, userID string) (*UserDetail, error) {
 		d.RecentRuns = append(d.RecentRuns, runView(run))
 	}
 	now := time.Now().UTC()
-	usage, _, err := u.s.Store.UsageSummary(ctx, store.UsageFilters{From: now.Add(-30 * 24 * time.Hour), To: now.Add(time.Minute), UserID: userID}, "model")
+	usage, _, err := u.s.Store.UsageSummary(ctx, store.UsageFilters{From: now.Add(-30 * 24 * time.Hour), To: now.Add(time.Minute), UserID: userID, Offset: offsetString(u.s.Cfg.Location(), now)}, "model")
 	if err != nil {
 		return nil, Wrap(err, "user usage")
 	}

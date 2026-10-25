@@ -272,7 +272,7 @@ func (m *Models) AddPrice(ctx context.Context, id string, in PriceInput, meta Me
 }
 
 func (m *Models) Usage(ctx context.Context, id string, from, to time.Time) ([]store.UsageAgg, store.UsageAgg, error) {
-	items, total, err := m.s.Store.UsageSummary(ctx, store.UsageFilters{From: from, To: to, Model: id}, "model")
+	items, total, err := m.s.Store.UsageSummary(ctx, store.UsageFilters{From: from, To: to, Model: id, Offset: offsetString(m.s.Cfg.Location(), from)}, "model")
 	if err != nil {
 		return nil, store.UsageAgg{}, Wrap(err, "model usage")
 	}
