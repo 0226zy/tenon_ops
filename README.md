@@ -39,7 +39,7 @@ Tenon 的远程运维控制台：管理员登录、Tenon 用户开通、模型/T
 | 模块 | 已实现 |
 |---|---|
 | 管理员登录 | 服务器 `master.key` 派生 pepper；MySQL 只存 `Argon2id(HMAC(pepper, password))` verifier；签名会话 cookie + DB 吊销；登录限流/锁定；CSRF；step-up |
-| Tenon 用户 | 列表/详情、创建、重置密码、停用/启用、查看密码、吊销会话、标签/备注、最大会话数；**事务直写 `t_user`**，Argon2id 与 Tenon 完全兼容 |
+| Tenon 用户 | 列表/详情、创建、随机生成/重置密码、停用/启用、查看密码、吊销会话、标签/备注、最大会话数；**事务直写 `t_user`**，Argon2id 与 Tenon 完全兼容 |
 | 密码保管 | 可还原明文，AES-256-GCM 密文落库；密钥在服务器 `master.key`；查看需 step-up + reason + 审计 |
 | 模型目录 | YAML 导入（严格字段）、元数据编辑、缓存命中/未命中输入价、输出价、工作日高峰倍率、价格历史、24h 用量；不改 Tenon 路由 |
 | 用量 | 按模型/用户/对话汇总，请求/token/错误率/估算成本、高峰/非高峰、趋势、CSV 导出 |

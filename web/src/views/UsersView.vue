@@ -86,6 +86,23 @@ function resetFilters() {
   void load()
 }
 
+function randomPassword(): string {
+  const bytes = new Uint8Array(18)
+  crypto.getRandomValues(bytes)
+  return btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join(''))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
+}
+
+function generateCreatePassword() {
+  form.password = randomPassword()
+}
+
+function generateResetPassword() {
+  resetPassword.value = randomPassword()
+}
+
 function openCreate() {
   Object.assign(form, { user_id: '', name: '', password: '', max_conv: 20, tags: '', note: '' })
   createError.value = ''
@@ -316,7 +333,7 @@ onMounted(() => { void load() })
             <div class="field"><label class="label">显示名</label><input v-model="form.name" class="input" placeholder="Alice" /></div>
           </div>
           <div class="form-row">
-            <div class="field"><label class="label">初始密码</label><input v-model="form.password" class="input input-mono" placeholder="留空自动生成 24 位" /><div class="hint">8–128 字节；留空由服务端生成。</div></div>
+            <div class="field"><label class="label">初始密码</label><div class="row" style="gap:8px;align-items:stretch"><input v-model="form.password" class="input input-mono" style="flex:1" placeholder="留空自动生成 24 位" /><button type="button" class="btn" style="white-space:nowrap" @click="generateCreatePassword"><RefreshCw :size="13" /> 随机生成</button></div><div class="hint">8–128 字节；可点击随机生成，或留空由服务端生成。</div></div>
             <div class="field"><label class="label">最大会话数</label><input v-model.number="form.max_conv" class="input" type="number" min="1" max="1000" /></div>
           </div>
           <div class="field"><label class="label">标签</label><input v-model="form.tags" class="input" placeholder="team-a, customer" /><div class="hint">逗号分隔，最多 10 个，仅管理端使用。</div></div>
@@ -367,7 +384,7 @@ onMounted(() => { void load() })
     <Modal :open="resetOpen" title="重置密码" :closable="!resetBusy" @close="resetOpen = false">
       <div v-if="!resetResult" class="stack">
         <div class="row"><div class="avatar" style="width:34px;height:34px">{{ resetTarget?.user_id.slice(0, 1).toUpperCase() }}</div><div><div style="font-weight:600">{{ resetTarget?.user_id }}</div><div class="small muted">旧密码和所有会话将立即失效</div></div></div>
-        <div class="field"><label class="label">新密码</label><input v-model="resetPassword" class="input input-mono" placeholder="留空自动生成 24 位" /><div class="hint">8–128 字节；留空由服务端生成。</div></div>
+        <div class="field"><label class="label">新密码</label><div class="row" style="gap:8px;align-items:stretch"><input v-model="resetPassword" class="input input-mono" style="flex:1" placeholder="留空自动生成 24 位" /><button type="button" class="btn" style="white-space:nowrap" @click="generateResetPassword"><RefreshCw :size="13" /> 随机生成</button></div><div class="hint">8–128 字节；可点击随机生成，或留空由服务端生成。</div></div>
         <div class="field"><label class="label">原因</label><input v-model="resetReason" class="input" placeholder="例如：用户忘记密码" maxlength="255" /></div>
         <div v-if="resetError" class="error-text">{{ resetError }}</div>
       </div>

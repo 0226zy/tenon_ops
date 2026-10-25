@@ -28,6 +28,28 @@ func TestPasswordRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRandomPassword(t *testing.T) {
+	p1, err := RandomPassword()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2, err := RandomPassword()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p1) != 24 {
+		t.Fatalf("length = %d, want 24", len(p1))
+	}
+	if p1 == p2 {
+		t.Fatal("two generated passwords are identical")
+	}
+	for _, c := range p1 {
+		if !(c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '-' || c == '_') {
+			t.Fatalf("unexpected character %q in %q", c, p1)
+		}
+	}
+}
+
 func TestVaultAAD(t *testing.T) {
 	v := NewVault(bytes.Repeat([]byte{1}, 32))
 	nonce, ciphertext, err := v.Seal("alice", 1, "s3cret")
