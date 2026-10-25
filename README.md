@@ -30,9 +30,9 @@ Tenon 的远程运维控制台：管理员登录、Tenon 用户开通、模型/T
 
 ### 真实远程部署
 
-`tenon_prod`、远程 MySQL、systemd 服务、经 SSH 隧道访问的真实数据：
+`tenon_prod`、远程 MySQL、systemd 服务、nginx `/ops/` 路径部署的真实数据（来源 IP 白名单）：
 
-![远程总览](docs/screenshots/remote-dashboard.png)
+![远程总览](docs/screenshots/public-dashboard.png)
 
 ## 功能
 
@@ -114,8 +114,8 @@ MySQL 账号 host 必须匹配连接方式：Unix socket 用 `@'localhost'`，TC
 1. 服务器建 `tenon-ops` 系统用户、`/etc/tenon-ops`、`/etc/tenon-ops/keys`（0700）。
 2. DBA 建 `tenon_admin` 和最小权限账号；执行 `init-db`。
 3. **在 Mac 上**运行 `init-admin`，把 `master.key` 复制到服务器；`admin.secret` 留在 Mac。
-4. 安装 systemd unit 与 nginx 配置；只监听 loopback，nginx 终止 TLS。
-5. 防火墙只放行 22（管理 IP）、443（白名单/VPN）；**7200、3306 不对公网**。
+4. 远程 `/ops/` 路径：`make build-remote`，安装 systemd，把 `deploy/nginx-ops-path.conf` include 到现有 nginx :80 default server；应用仍只监听 loopback。
+5. nginx 对 `/ops/` 和 `/api/ops/v1/` 配置来源 IP allowlist；**7200、3306 不对公网**。当前是 HTTP + IP 白名单，未实现 MFA，拿到域名/证书后应切 HTTPS。
 
 ```bash
 # Mac 上（通过 SSH 隧道写 verifier）

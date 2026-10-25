@@ -121,39 +121,66 @@ sudo systemctl status tenon-ops --no-pager
 
 `deploy/nginx.conf` 中的 `allow 203.0.113.10` 必须替换为你的办公/VPN 出口；不要 `allow all`。
 
-## 5a. 无域名/TLS 的私有访问（当前推荐）
+## 5a. nginx `/ops/` 路径部署（HTTP + IP 白名单）
 
-如果没有域名/证书，不要直接把 7200 暴露公网。服务已经绑定 `127.0.0.1:7200`，从 Mac 建 SSH 隧道即可：
+没有域名/证书时，可以复用现有 nginx :80，在 `/ops/` 路径下暴露管理端，不影响 Tenon 的 `/`、`/api/`、`/assets/`：
+
+1. 构建 `/ops/` 版本（前端资源和 Vue Router 都带 `/ops/` 前缀）：
 
 ```bash
-ssh -i ~/.ssh/mac1.pem -N -L 7200:127.0.0.1:7200 ubuntu@<server>
-# 浏览器打开 http://127.0.0.1:7200
+make build-remote
+# 产物：bin/tenon-ops-linux
 ```
 
-此时服务器配置应使用：
+2. 安装二进制、配置、密钥，重启服务（应用仍只监听 `127.0.0.1:7200`）：
+
+```bash
+sudo install -m 0755 bin/tenon-ops-linux /usr/local/bin/tenon-ops
+sudo systemctl restart tenon-ops
+```
+
+3. 把 `deploy/nginx-ops-path.conf` 安装为 `/etc/nginx/snippets/tenon-ops.conf`，把其中的 `allow 203.0.113.10` 换成你的公网出口 IP，然后在现有 default server 中 include：
+
+```nginx
+# /etc/nginx/sites-available/tenon，default server 内
+include /etc/nginx/snippets/tenon-ops.conf;
+
+location /api/ { ... }   # 原有 Tenon 配置保持不变
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+4. 服务端配置：
 
 ```yaml
 mode: remote
-exposure: private
+exposure: private          # 来源 IP 白名单，不是无限制公网
 listen: 127.0.0.1:7200
-public_url: http://127.0.0.1:7200
+public_url: http://<server>/ops/
 security:
   cookie_secure: false
-  allowed_origins: ["http://127.0.0.1:7200"]
-  allowed_hosts: ["127.0.0.1:7200"]
+  allowed_origins: ["http://<server>", "http://127.0.0.1:7200"]
+  allowed_hosts: ["<server>", "127.0.0.1"]
 ```
 
-这是“远程部署 + 端到端加密隧道”，不是公网 HTTPS。等有域名/证书后，改成：
+浏览器访问：
 
-```yaml
-public_url: https://admin.example.com
-security:
-  cookie_secure: true
-  allowed_origins: ["https://admin.example.com"]
-  allowed_hosts: ["admin.example.com"]
+```text
+http://<server>/ops/
 ```
 
-再启用 nginx server block（见第 5 节），并重启 `tenon-ops`。
+> 这是 HTTP，不是 HTTPS；目前只适合“固定来源 IP + 强密码 + 无 MFA”的临时部署。不要设置 `deny all` 之外的“allow all”。有域名/证书后，切到第 5 节的 HTTPS server block，并把 `public_url`/`allowed_origins`/`allowed_hosts` 改成域名、`cookie_secure: true`。
+
+### SSH 隧道备选
+
+如果不想开放 nginx 路径，也可以只建隧道，访问 `http://127.0.0.1:7200/ops/`（nginx）或 `http://127.0.0.1:7200/`（root 构建版本）：
+
+```bash
+ssh -i ~/.ssh/mac1.pem -N -L 7200:127.0.0.1:80 ubuntu@<server>
+# 浏览器打开 http://127.0.0.1:7200/ops/
+```
 
 ## 6. 首次登录与自检
 

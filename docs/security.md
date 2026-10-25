@@ -78,6 +78,14 @@
 9. **无 RBAC/多管理员**：只有 `super_admin`；表字段预留角色，但 API 未按角色裁剪。
 10. **审计无哈希链**：追加写权限 + 备份；防篡改哈希链是 P1。
 
+## 6a. 当前 nginx `/ops/` 部署
+
+- 应用只监听 `127.0.0.1:7200`，由 nginx :80 的 `/ops/` 反代。
+- `/ops/` 与 `/api/ops/v1/` 都配置了来源 IP allowlist；不是无限制公网。
+- 仍是 HTTP：管理员密码和会话在源 IP 到服务器之间是明文。只应在固定出口 IP/可信网络下临时使用。
+- 无 MFA；不要把 allowlist 改成 `allow all`。拿到域名/证书后应切 HTTPS，并优先补 WebAuthn/TOTP。
+- 来源 IP 变化会导致 403；通过 SSH 修改 nginx allowlist 并 `nginx -t && systemctl reload nginx`。
+
 ## 7. 运维检查
 
 - `tenon-ops doctor`：DB、schema 契约、管理库、密钥权限、公开 URL、数据新鲜度。
