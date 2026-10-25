@@ -95,14 +95,16 @@ type Model struct {
 }
 
 type Price struct {
-	ID            int64     `json:"id"`
-	ModelID       string    `json:"model_id"`
-	EffectiveFrom time.Time `json:"effective_from"`
-	InputPerMTok  float64   `json:"input_per_mtok"`
-	OutputPerMTok float64   `json:"output_per_mtok"`
-	Currency      string    `json:"currency"`
-	CreatedBy     string    `json:"created_by"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID              int64     `json:"id"`
+	ModelID         string    `json:"model_id"`
+	EffectiveFrom   time.Time `json:"effective_from"`
+	InputPerMTok    float64   `json:"input_per_mtok"`
+	CacheHitPerMTok float64   `json:"cache_hit_per_mtok"`
+	OutputPerMTok   float64   `json:"output_per_mtok"`
+	PeakMultiplier  float64   `json:"peak_multiplier"`
+	Currency        string    `json:"currency"`
+	CreatedBy       string    `json:"created_by"`
+	CreatedAt       time.Time `json:"created_at"`
 }
 
 type UsageAgg struct {

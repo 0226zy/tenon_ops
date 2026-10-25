@@ -65,11 +65,12 @@ func (d *Dashboard) Summary(ctx context.Context) (*DashboardSummary, error) {
 	if err != nil {
 		return nil, err
 	}
-	todayItems, today, err := d.s.Store.UsageSummary(ctx, store.UsageFilters{From: start, To: end}, "model")
+	offset := offsetString(loc, now)
+	todayItems, today, err := d.s.Store.UsageSummary(ctx, store.UsageFilters{From: start, To: end, Offset: offset}, "model")
 	if err != nil {
 		return nil, Wrap(err, "today usage")
 	}
-	series, err := d.s.Store.UsageSeries(ctx, store.UsageFilters{From: now.Add(-24 * time.Hour), To: end}, offsetString(loc, now), "model")
+	series, err := d.s.Store.UsageSeries(ctx, store.UsageFilters{From: now.Add(-24 * time.Hour), To: end, Offset: offset}, offset, "model")
 	if err != nil {
 		return nil, Wrap(err, "usage series")
 	}
@@ -77,7 +78,7 @@ func (d *Dashboard) Summary(ctx context.Context) (*DashboardSummary, error) {
 	if len(topModels) > 5 {
 		topModels = topModels[:5]
 	}
-	userItems, _, err := d.s.Store.UsageSummary(ctx, store.UsageFilters{From: start, To: end}, "user")
+	userItems, _, err := d.s.Store.UsageSummary(ctx, store.UsageFilters{From: start, To: end, Offset: offset}, "user")
 	if err != nil {
 		return nil, Wrap(err, "top users")
 	}

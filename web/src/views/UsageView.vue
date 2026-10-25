@@ -4,6 +4,7 @@ import { AlertTriangle, Coins, Download, Loader2, RefreshCw, Zap } from 'lucide-
 import PageHeader from '@/components/PageHeader.vue'
 import StatCard from '@/components/StatCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import Badge from '@/components/Badge.vue'
 import StepUpModal from '@/components/StepUpModal.vue'
 import { api, ApiError } from '@/api/client'
 import type { UsageOverview } from '@/api/types'
@@ -137,6 +138,10 @@ onMounted(() => { preset(7) })
     <div v-if="loading && !data" class="card card-pad"><Loader2 :size="20" class="spin" /><span style="margin-left:8px">加载用量…</span></div>
 
     <template v-else-if="data">
+      <div class="row wrap" style="margin-bottom:12px">
+        <Badge :tone="data.peak_now ? 'amber' : 'green'" dot>{{ data.peak_now ? '当前高峰' : '当前非高峰' }}</Badge>
+        <span class="small muted">计费时区 {{ data.timezone }} · 高峰为周一至周五 09:00–12:00、14:00–18:00；其他时间及周末非高峰</span>
+      </div>
       <div class="grid-4">
         <StatCard label="模型请求" :value="fmtInt(data.total.requests)"><template #icon><Zap :size="13" /></template><template #meta>{{ rangeLabel }}</template></StatCard>
         <StatCard label="总 Token" :value="fmtNumber(data.total.total_tokens)" tone="accent"><template #icon><Zap :size="13" /></template><template #meta>prompt {{ fmtNumber(data.total.prompt_tokens) }} / completion {{ fmtNumber(data.total.completion_tokens) }}</template></StatCard>

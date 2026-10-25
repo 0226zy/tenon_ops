@@ -41,8 +41,8 @@ Tenon 的远程运维控制台：管理员登录、Tenon 用户开通、模型/T
 | 管理员登录 | 服务器 `master.key` 派生 pepper；MySQL 只存 `Argon2id(HMAC(pepper, password))` verifier；签名会话 cookie + DB 吊销；登录限流/锁定；CSRF；step-up |
 | Tenon 用户 | 列表/详情、创建、重置密码、停用/启用、查看密码、吊销会话、标签/备注、最大会话数；**事务直写 `t_user`**，Argon2id 与 Tenon 完全兼容 |
 | 密码保管 | 可还原明文，AES-256-GCM 密文落库；密钥在服务器 `master.key`；查看需 step-up + reason + 审计 |
-| 模型目录 | YAML 导入（严格字段）、元数据编辑、价格历史、24h 用量；不改 Tenon 路由 |
-| 用量 | 按模型/用户/对话汇总，请求/token/错误率/估算成本、趋势、CSV 导出 |
+| 模型目录 | YAML 导入（严格字段）、元数据编辑、缓存命中/未命中输入价、输出价、工作日高峰倍率、价格历史、24h 用量；不改 Tenon 路由 |
+| 用量 | 按模型/用户/对话汇总，请求/token/错误率/估算成本、高峰/非高峰、趋势、CSV 导出 |
 | 活跃用户 | 运行中/在线/活跃/最近/今日/未活跃分层；明确按业务活动而非真实心跳 |
 | Agent 任务 | Run 列表/详情、事件时间线、工具调用/结果、消息、用量、运行中 2 秒轮询跟随 |
 | 审计 | 登录/写操作/查看密码/导出审计；追加写；CSV 导出；detail JSON |
@@ -114,7 +114,7 @@ MySQL 账号 host 必须匹配连接方式：Unix socket 用 `@'localhost'`，TC
 1. 服务器建 `tenon-ops` 系统用户、`/etc/tenon-ops`、`/etc/tenon-ops/keys`（0700）。
 2. DBA 建 `tenon_admin` 和最小权限账号；执行 `init-db`。
 3. **在 Mac 上**运行 `init-admin`，把 `master.key` 复制到服务器；`admin.secret` 留在 Mac。
-4. 远程 `/ops/` 路径：`make build-remote`，安装 systemd，把 `deploy/nginx-ops-path.conf` include 到现有 nginx :80 default server；应用仍只监听 loopback。
+4. 远程 `/ops/` 路径：`make build-remote`，安装 systemd；安装 `deploy/nginx-ops-path.conf` 与 IP 专用 server block（`deploy/nginx-ops-ip.conf`），应用仍只监听 loopback。
 5. nginx 对 `/ops/` 和 `/api/ops/v1/` 配置来源 IP allowlist；**7200、3306 不对公网**。当前是 HTTP + IP 白名单，未实现 MFA，拿到域名/证书后应切 HTTPS。
 
 ```bash

@@ -27,7 +27,7 @@ const priceTarget = ref<ModelView | null>(null)
 const priceOpen = ref(false)
 const priceBusy = ref(false)
 const priceError = ref('')
-const price = reactive({ effective_from: '', input_per_mtok: 0, output_per_mtok: 0, currency: 'CNY' })
+const price = reactive({ effective_from: '', input_per_mtok: 0, cache_hit_per_mtok: 0, output_per_mtok: 0, peak_multiplier: 2, currency: 'CNY' })
 
 const editTarget = ref<ModelView | null>(null)
 const editOpen = ref(false)
@@ -76,7 +76,9 @@ function openPrice(m: ModelView) {
   priceTarget.value = m
   price.effective_from = new Date().toISOString().slice(0, 16)
   price.input_per_mtok = m.price?.input_per_mtok ?? 0
+  price.cache_hit_per_mtok = m.price?.cache_hit_per_mtok ?? 0
   price.output_per_mtok = m.price?.output_per_mtok ?? 0
+  price.peak_multiplier = m.price?.peak_multiplier ?? 2
   price.currency = m.price?.currency ?? 'CNY'
   priceError.value = ''
   priceOpen.value = true
@@ -89,7 +91,8 @@ async function submitPrice() {
   try {
     await api.models.addPrice(priceTarget.value.model_id, {
       effective_from: price.effective_from ? new Date(price.effective_from).toISOString() : undefined,
-      input_per_mtok: Number(price.input_per_mtok), output_per_mtok: Number(price.output_per_mtok), currency: price.currency,
+      input_per_mtok: Number(price.input_per_mtok), cache_hit_per_mtok: Number(price.cache_hit_per_mtok),
+      output_per_mtok: Number(price.output_per_mtok), peak_multiplier: Number(price.peak_multiplier), currency: price.currency,
     })
     toast.success('价格已生效')
     priceOpen.value = false
@@ -166,7 +169,7 @@ onMounted(load)
               <td class="right">{{ fmtNumber(m.requests_24h) }}</td>
               <td class="right mono">{{ fmtNumber(m.tokens_24h) }}</td>
               <td class="right">{{ m.price ? fmtCost(m.cost_24h) : '未定价' }}</td>
-              <td><span v-if="m.price" class="small mono">in {{ m.price.input_per_mtok }} / out {{ m.price.output_per_mtok }} {{ m.price.currency }}</span><span v-else class="small muted">—</span></td>
+              <td><span v-if="m.price" class="small mono">miss {{ m.price.input_per_mtok }} / hit {{ m.price.cache_hit_per_mtok }} / out {{ m.price.output_per_mtok }} · peak ×{{ m.price.peak_multiplier }} {{ m.price.currency }}</span><span v-else class="small muted">—</span></td>
               <td class="small muted">{{ fmtTime(m.synced_at || m.modified_at) }}</td>
               <td><div class="actions">
                 <button class="btn btn-sm" title="定价" @click="openPrice(m)"><Coins :size="13" /></button>
@@ -195,9 +198,11 @@ onMounted(load)
       <div class="stack">
         <div class="row"><span class="mono" style="font-weight:600">{{ priceTarget?.model_id }}</span><Badge tone="gray">每 1M tokens</Badge></div>
         <div class="field"><label class="label">生效时间</label><input v-model="price.effective_from" class="input" type="datetime-local" /></div>
-        <div class="form-row"><div class="field"><label class="label">输入价格</label><input v-model.number="price.input_per_mtok" class="input" type="number" min="0" step="0.000001" /></div><div class="field"><label class="label">输出价格</label><input v-model.number="price.output_per_mtok" class="input" type="number" min="0" step="0.000001" /></div></div>
+        <div class="form-row"><div class="field"><label class="label">缓存未命中输入价</label><input v-model.number="price.input_per_mtok" class="input" type="number" min="0" step="0.000001" /><div class="hint">基础价/1M，非高峰</div></div><div class="field"><label class="label">缓存命中输入价</label><input v-model.number="price.cache_hit_per_mtok" class="input" type="number" min="0" step="0.000001" /><div class="hint">基础价/1M，非高峰</div></div></div>
+        <div class="form-row"><div class="field"><label class="label">输出价</label><input v-model.number="price.output_per_mtok" class="input" type="number" min="0" step="0.000001" /><div class="hint">基础价/1M，非高峰</div></div><div class="field"><label class="label">高峰倍率</label><input v-model.number="price.peak_multiplier" class="input" type="number" min="0.1" max="10" step="0.1" /><div class="hint">高峰价 = 基础价 × 倍率</div></div></div>
         <div class="field"><label class="label">币种</label><select v-model="price.currency" class="select"><option>CNY</option><option>USD</option><option>EUR</option></select></div>
-        <div class="hint">价格按生效时间保留历史；已发生用量不会自动重算。</div>
+        <div class="banner info"><CircleHelp :size="15" /><span>高峰：周一至周五 09:00–12:00、14:00–18:00（服务器时区，默认 Asia/Shanghai）；其他时间及周六/周日为非高峰。价格按生效时间保留历史；已发生用量不会自动重算。</span></div>
+        <div class="hint">Tenon 当前 <span class="mono">t_llm_usage</span> 没有缓存命中 token 字段，估算暂按全部 prompt 未命中；管理端已保留缓存命中价，待 Tenon 提供字段后自动使用。</div>
         <div v-if="priceError" class="error-text">{{ priceError }}</div>
       </div>
       <template #footer><button class="btn" :disabled="priceBusy" @click="priceOpen = false">取消</button><button class="btn btn-primary" :disabled="priceBusy" @click="submitPrice"><Loader2 v-if="priceBusy" :size="14" class="spin" /> 保存价格</button></template>

@@ -28,10 +28,11 @@ type Querier interface {
 }
 
 type Store struct {
-	db      *sql.DB
-	admin   string
-	tenon   string
-	timeout time.Duration
+	db               *sql.DB
+	admin            string
+	tenon            string
+	timeout          time.Duration
+	usageCacheColumn string
 }
 
 func Open(ctx context.Context, cfg *config.Config) (*Store, error) {
@@ -69,7 +70,26 @@ func Open(ctx context.Context, cfg *config.Config) (*Store, error) {
 		_ = db.Close()
 		return nil, fmt.Errorf("ping mysql: %w", err)
 	}
-	return &Store{db: db, admin: cfg.DB.AdminSchema, tenon: cfg.DB.TenonSchema, timeout: 10 * time.Second}, nil
+	st := &Store{db: db, admin: cfg.DB.AdminSchema, tenon: cfg.DB.TenonSchema, timeout: 10 * time.Second}
+	st.usageCacheColumn = st.detectUsageCacheColumn(ctx)
+	return st, nil
+}
+
+// detectUsageCacheColumn is forward-compatible: current Tenon schemas do not
+// expose cached prompt tokens, but a future column can be used automatically.
+func (s *Store) detectUsageCacheColumn(ctx context.Context) string {
+	var name string
+	err := s.db.QueryRowContext(ctx, `SELECT COLUMN_NAME FROM information_schema.columns
+		WHERE TABLE_SCHEMA=? AND TABLE_NAME='t_llm_usage' AND COLUMN_NAME IN ('Fcache_hit_tokens','Fcached_tokens') LIMIT 1`, s.tenon).Scan(&name)
+	if err != nil {
+		return ""
+	}
+	switch name {
+	case "Fcache_hit_tokens", "Fcached_tokens":
+		return name
+	default:
+		return ""
+	}
 }
 
 func (s *Store) DB() *sql.DB  { return s.db }

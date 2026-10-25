@@ -119,8 +119,17 @@ PATCH /api/ops/v1/models/{id}
 
 ```http
 POST /api/ops/v1/models/{id}/prices
-{"effective_from":"2026-10-01T00:00:00Z","input_per_mtok":1.0,"output_per_mtok":2.0,"currency":"CNY"}
+{"effective_from":"2026-10-01T00:00:00Z","input_per_mtok":1.0,"cache_hit_per_mtok":0.02,"output_per_mtok":4.0,"peak_multiplier":2.0,"currency":"CNY"}
 ```
+
+价格字段：
+
+- `input_per_mtok`：缓存未命中输入，非高峰基础价
+- `cache_hit_per_mtok`：缓存命中输入，非高峰基础价
+- `output_per_mtok`：输出，非高峰基础价
+- `peak_multiplier`：高峰倍率，默认 2.0
+
+高峰为周一至周五 09:00–12:00、14:00–18:00（服务器时区，默认 Asia/Shanghai）；其他时间与周末按基础价。当前 Tenon `t_llm_usage` 没有 cache-hit token 列，成本暂按全部 prompt 未命中估算，缓存命中价待字段接入后自动生效。
 
 模型 `ready` 固定 `"unknown"`（本版本未接控制层）。
 

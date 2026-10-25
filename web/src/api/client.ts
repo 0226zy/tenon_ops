@@ -127,7 +127,7 @@ export const api = {
     patch: (id: string, body: { display_name?: string; provider?: string; notes?: string; enabled?: boolean }) =>
       request<void>('PATCH', `/models/${encodeURIComponent(id)}`, body),
     prices: (id: string) => request<{ items: Price[] }>('GET', `/models/${encodeURIComponent(id)}/prices`),
-    addPrice: (id: string, body: { effective_from?: string; input_per_mtok: number; output_per_mtok: number; currency: string }) =>
+    addPrice: (id: string, body: { effective_from?: string; input_per_mtok: number; cache_hit_per_mtok: number; output_per_mtok: number; peak_multiplier: number; currency: string }) =>
       request<Price>('POST', `/models/${encodeURIComponent(id)}/prices`, body),
     usage: (id: string, from?: string, to?: string) =>
       request<{ from: string; to: string; items: UsageAgg[]; total: UsageAgg }>('GET', `/models/${encodeURIComponent(id)}/usage${query({ from, to })}`),

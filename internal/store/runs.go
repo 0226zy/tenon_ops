@@ -179,8 +179,9 @@ func (s *Store) RunMessages(ctx context.Context, runID string) ([]Message, error
 	return out, rows.Err()
 }
 
-func (s *Store) RunUsageRows(ctx context.Context, runID string) ([]UsageRow, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT u.Fcreate_time,u.Fuser_id,u.Fconv_id,u.Frun_id,u.Fmodel,u.Fprompt_tokens,u.Fcompl_tokens,u.Fcost_ms,u.Fhttp_status,`+costExpr+`,`+pricedExpr+`
+func (s *Store) RunUsageRows(ctx context.Context, runID, offset string) ([]UsageRow, error) {
+	cost := s.costExpr(UsageFilters{Offset: offset})
+	rows, err := s.db.QueryContext(ctx, `SELECT u.Fcreate_time,u.Fuser_id,u.Fconv_id,u.Frun_id,u.Fmodel,u.Fprompt_tokens,u.Fcompl_tokens,u.Fcost_ms,u.Fhttp_status,`+cost+`,`+pricedExpr+`
 		FROM `+s.t("t_llm_usage")+` u `+s.priceJoin()+` WHERE u.Frun_id=? ORDER BY u.Fid`, runID)
 	if err != nil {
 		return nil, err

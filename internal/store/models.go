@@ -88,8 +88,8 @@ func (s *Store) UpdateModelMeta(ctx context.Context, id, displayName, provider, 
 func (s *Store) AddPrice(ctx context.Context, p *Price) error {
 	now := utcNow()
 	res, err := s.db.ExecContext(ctx, `INSERT INTO `+s.a("tadm_model_price")+`
-		(Fmodel_id,Feffective_from,Finput_per_mtok,Foutput_per_mtok,Fcurrency,Fcreated_by,Fcreate_time)
-		VALUES(?,?,?,?,?,?,?)`, p.ModelID, p.EffectiveFrom.UTC(), p.InputPerMTok, p.OutputPerMTok, p.Currency, p.CreatedBy, now)
+		(Fmodel_id,Feffective_from,Finput_per_mtok,Fcache_hit_per_mtok,Foutput_per_mtok,Fpeak_multiplier,Fcurrency,Fcreated_by,Fcreate_time)
+		VALUES(?,?,?,?,?,?,?,?,?)`, p.ModelID, p.EffectiveFrom.UTC(), p.InputPerMTok, p.CacheHitPerMTok, p.OutputPerMTok, p.PeakMultiplier, p.Currency, p.CreatedBy, now)
 	if IsDuplicate(err) {
 		return ErrDuplicate
 	}
@@ -102,7 +102,7 @@ func (s *Store) AddPrice(ctx context.Context, p *Price) error {
 }
 
 func (s *Store) Prices(ctx context.Context, modelID string) ([]Price, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT Fid,Fmodel_id,Feffective_from,Finput_per_mtok,Foutput_per_mtok,Fcurrency,Fcreated_by,Fcreate_time FROM `+s.a("tadm_model_price")+` WHERE Fmodel_id=? ORDER BY Feffective_from DESC`, modelID)
+	rows, err := s.db.QueryContext(ctx, `SELECT Fid,Fmodel_id,Feffective_from,Finput_per_mtok,Fcache_hit_per_mtok,Foutput_per_mtok,Fpeak_multiplier,Fcurrency,Fcreated_by,Fcreate_time FROM `+s.a("tadm_model_price")+` WHERE Fmodel_id=? ORDER BY Feffective_from DESC`, modelID)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (s *Store) Prices(ctx context.Context, modelID string) ([]Price, error) {
 	out := []Price{}
 	for rows.Next() {
 		var p Price
-		if err := rows.Scan(&p.ID, &p.ModelID, &p.EffectiveFrom, &p.InputPerMTok, &p.OutputPerMTok, &p.Currency, &p.CreatedBy, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.ModelID, &p.EffectiveFrom, &p.InputPerMTok, &p.CacheHitPerMTok, &p.OutputPerMTok, &p.PeakMultiplier, &p.Currency, &p.CreatedBy, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -119,7 +119,7 @@ func (s *Store) Prices(ctx context.Context, modelID string) ([]Price, error) {
 }
 
 func (s *Store) LatestPriceMap(ctx context.Context) (map[string]Price, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT p.Fid,p.Fmodel_id,p.Feffective_from,p.Finput_per_mtok,p.Foutput_per_mtok,p.Fcurrency,p.Fcreated_by,p.Fcreate_time
+	rows, err := s.db.QueryContext(ctx, `SELECT p.Fid,p.Fmodel_id,p.Feffective_from,p.Finput_per_mtok,p.Fcache_hit_per_mtok,p.Foutput_per_mtok,p.Fpeak_multiplier,p.Fcurrency,p.Fcreated_by,p.Fcreate_time
 		FROM `+s.a("tadm_model_price")+` p
 		INNER JOIN (SELECT Fmodel_id,MAX(Feffective_from) mx FROM `+s.a("tadm_model_price")+` GROUP BY Fmodel_id) x
 		ON x.Fmodel_id=p.Fmodel_id AND x.mx=p.Feffective_from`)
@@ -130,7 +130,7 @@ func (s *Store) LatestPriceMap(ctx context.Context) (map[string]Price, error) {
 	out := map[string]Price{}
 	for rows.Next() {
 		var p Price
-		if err := rows.Scan(&p.ID, &p.ModelID, &p.EffectiveFrom, &p.InputPerMTok, &p.OutputPerMTok, &p.Currency, &p.CreatedBy, &p.CreatedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.ModelID, &p.EffectiveFrom, &p.InputPerMTok, &p.CacheHitPerMTok, &p.OutputPerMTok, &p.PeakMultiplier, &p.Currency, &p.CreatedBy, &p.CreatedAt); err != nil {
 			return nil, err
 		}
 		out[p.ModelID] = p

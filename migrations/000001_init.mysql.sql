@@ -186,8 +186,10 @@ CREATE TABLE IF NOT EXISTS `tadm_model_price` (
   `Fid`                  BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `Fmodel_id`            VARCHAR(64)     NOT NULL,
   `Feffective_from`      DATETIME        NOT NULL,
-  `Finput_per_mtok`      DECIMAL(18,6)   NOT NULL DEFAULT 0,
-  `Foutput_per_mtok`     DECIMAL(18,6)   NOT NULL DEFAULT 0,
+  `Finput_per_mtok`      DECIMAL(18,6)   NOT NULL DEFAULT 0, -- 缓存未命中输入，非高峰
+  `Fcache_hit_per_mtok`  DECIMAL(18,6)   NOT NULL DEFAULT 0, -- 缓存命中输入，非高峰
+  `Foutput_per_mtok`     DECIMAL(18,6)   NOT NULL DEFAULT 0, -- 输出，非高峰
+  `Fpeak_multiplier`     DECIMAL(8,4)    NOT NULL DEFAULT 2.0000, -- 高峰价 = 基础价 × 倍率
   `Fcurrency`            CHAR(3)         NOT NULL DEFAULT 'CNY',
   `Fcreated_by`          VARCHAR(64)     NOT NULL DEFAULT '',
   `Fcreate_time`         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP,

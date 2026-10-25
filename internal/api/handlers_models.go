@@ -78,10 +78,12 @@ func (s *Server) modelPrices(w http.ResponseWriter, r *http.Request) {
 }
 
 type addPriceRequest struct {
-	EffectiveFrom string  `json:"effective_from"`
-	InputPerMTok  float64 `json:"input_per_mtok"`
-	OutputPerMTok float64 `json:"output_per_mtok"`
-	Currency      string  `json:"currency"`
+	EffectiveFrom   string  `json:"effective_from"`
+	InputPerMTok    float64 `json:"input_per_mtok"`
+	CacheHitPerMTok float64 `json:"cache_hit_per_mtok"`
+	OutputPerMTok   float64 `json:"output_per_mtok"`
+	PeakMultiplier  float64 `json:"peak_multiplier"`
+	Currency        string  `json:"currency"`
 }
 
 func (s *Server) addModelPrice(w http.ResponseWriter, r *http.Request) {
@@ -100,7 +102,8 @@ func (s *Server) addModelPrice(w http.ResponseWriter, r *http.Request) {
 		effective = t
 	}
 	p, err := s.Services.Models.AddPrice(r.Context(), r.PathValue("id"), services.PriceInput{
-		EffectiveFrom: effective, InputPerMTok: in.InputPerMTok, OutputPerMTok: in.OutputPerMTok, Currency: in.Currency,
+		EffectiveFrom: effective, InputPerMTok: in.InputPerMTok, CacheHitPerMTok: in.CacheHitPerMTok,
+		OutputPerMTok: in.OutputPerMTok, PeakMultiplier: in.PeakMultiplier, Currency: in.Currency,
 	}, s.meta(r))
 	if err != nil {
 		writeServiceError(w, err)

@@ -136,21 +136,27 @@ make build-remote
 
 ```bash
 sudo install -m 0755 bin/tenon-ops-linux /usr/local/bin/tenon-ops
+# 已有库升级价格表（仅首次）：
+mysql -h127.0.0.1 -uroot -p tenon_admin < migrations/000002_pricing_peak.mysql.sql
 sudo systemctl restart tenon-ops
 ```
 
-3. 把 `deploy/nginx-ops-path.conf` 安装为 `/etc/nginx/snippets/tenon-ops.conf`，把其中的 `allow 203.0.113.10` 换成你的公网出口 IP，然后在现有 default server 中 include：
-
-```nginx
-# /etc/nginx/sites-available/tenon，default server 内
-include /etc/nginx/snippets/tenon-ops.conf;
-
-location /api/ { ... }   # 原有 Tenon 配置保持不变
-```
+3. 安装 `/ops` location 与来源 IP allowlist：
 
 ```bash
+sudo install -m 0644 deploy/nginx-ops-path.conf /etc/nginx/snippets/tenon-ops.conf
+sudo editor /etc/nginx/snippets/tenon-ops.conf   # 替换 allow 203.0.113.10
+```
+
+再安装 **IP 专用 server block**，避免 Tenon 重新部署覆盖 `sites-available/tenon` 时丢掉 `/ops`：
+
+```bash
+sed 's/__SERVER_IP__/<server-ip>/' deploy/nginx-ops-ip.conf | sudo tee /etc/nginx/sites-available/tenon-ops >/dev/null
+sudo ln -sf /etc/nginx/sites-available/tenon-ops /etc/nginx/sites-enabled/tenon-ops
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+这个 block 复制了 Tenon 的 root/API/assets 代理，只对 `Host: <server-ip>` 生效；Tenon 的默认 server 仍保留。Tenon 升级重写自己的 site 文件时，本文件不会被覆盖。
 
 4. 服务端配置：
 

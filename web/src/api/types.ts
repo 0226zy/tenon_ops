@@ -143,7 +143,9 @@ export interface Price {
   model_id: string
   effective_from: string
   input_per_mtok: number
+  cache_hit_per_mtok: number
   output_per_mtok: number
+  peak_multiplier: number
   currency: string
   created_by: string
   created_at: string
@@ -167,6 +169,8 @@ export interface UsageOverview {
   items: UsageAgg[]
   series: UsagePoint[]
   group_by: string
+  peak_now: boolean
+  timezone: string
 }
 
 export interface PresenceItem {

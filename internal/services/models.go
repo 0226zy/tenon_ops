@@ -28,10 +28,12 @@ type ModelView struct {
 }
 
 type PriceInput struct {
-	EffectiveFrom time.Time `json:"effective_from"`
-	InputPerMTok  float64   `json:"input_per_mtok"`
-	OutputPerMTok float64   `json:"output_per_mtok"`
-	Currency      string    `json:"currency"`
+	EffectiveFrom   time.Time `json:"effective_from"`
+	InputPerMTok    float64   `json:"input_per_mtok"`     // cache miss, off-peak
+	CacheHitPerMTok float64   `json:"cache_hit_per_mtok"` // cache hit, off-peak
+	OutputPerMTok   float64   `json:"output_per_mtok"`
+	PeakMultiplier  float64   `json:"peak_multiplier"`
+	Currency        string    `json:"currency"`
 }
 
 type ModelPatch struct {
@@ -69,7 +71,7 @@ func (m *Models) List(ctx context.Context) ([]ModelView, error) {
 		return nil, Wrap(err, "prices")
 	}
 	now := time.Now().UTC()
-	usage, _, err := m.s.Store.UsageSummary(ctx, store.UsageFilters{From: now.Add(-24 * time.Hour), To: now.Add(time.Minute)}, "model")
+	usage, _, err := m.s.Store.UsageSummary(ctx, store.UsageFilters{From: now.Add(-24 * time.Hour), To: now.Add(time.Minute), Offset: offsetString(m.s.Cfg.Location(), now)}, "model")
 	if err != nil {
 		return nil, Wrap(err, "model usage")
 	}
@@ -238,8 +240,14 @@ func (m *Models) AddPrice(ctx context.Context, id string, in PriceInput, meta Me
 		}
 		return nil, Wrap(err, "get model")
 	}
-	if in.InputPerMTok < 0 || in.OutputPerMTok < 0 {
+	if in.InputPerMTok < 0 || in.CacheHitPerMTok < 0 || in.OutputPerMTok < 0 {
 		return nil, BadRequest("BAD_PRICE", "price must be non-negative")
+	}
+	if in.PeakMultiplier == 0 {
+		in.PeakMultiplier = 2.0
+	}
+	if in.PeakMultiplier < 0.1 || in.PeakMultiplier > 10 {
+		return nil, BadRequest("BAD_PRICE", "peak multiplier must be between 0.1 and 10")
 	}
 	if in.Currency == "" {
 		in.Currency = "CNY"
@@ -250,14 +258,14 @@ func (m *Models) AddPrice(ctx context.Context, id string, in PriceInput, meta Me
 	if in.EffectiveFrom.IsZero() {
 		in.EffectiveFrom = time.Now().UTC()
 	}
-	p := &store.Price{ModelID: id, EffectiveFrom: in.EffectiveFrom.UTC(), InputPerMTok: in.InputPerMTok, OutputPerMTok: in.OutputPerMTok, Currency: strings.ToUpper(in.Currency), CreatedBy: meta.AdminID}
+	p := &store.Price{ModelID: id, EffectiveFrom: in.EffectiveFrom.UTC(), InputPerMTok: in.InputPerMTok, CacheHitPerMTok: in.CacheHitPerMTok, OutputPerMTok: in.OutputPerMTok, PeakMultiplier: in.PeakMultiplier, Currency: strings.ToUpper(in.Currency), CreatedBy: meta.AdminID}
 	if err := m.s.Store.AddPrice(ctx, p); err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
 			return nil, Conflict("PRICE_EXISTS", "a price already exists for this effective time")
 		}
 		return nil, Wrap(err, "add price")
 	}
-	if err := m.s.audit(ctx, meta, "model.price.create", "model", id, 1, "", map[string]any{"effective_from": p.EffectiveFrom, "input": p.InputPerMTok, "output": p.OutputPerMTok, "currency": p.Currency}); err != nil {
+	if err := m.s.audit(ctx, meta, "model.price.create", "model", id, 1, "", map[string]any{"effective_from": p.EffectiveFrom, "cache_miss_input": p.InputPerMTok, "cache_hit_input": p.CacheHitPerMTok, "output": p.OutputPerMTok, "peak_multiplier": p.PeakMultiplier, "currency": p.Currency}); err != nil {
 		return nil, err
 	}
 	return p, nil

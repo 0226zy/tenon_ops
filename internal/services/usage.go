@@ -15,12 +15,14 @@ import (
 type Usage struct{ s *Services }
 
 type UsageOverview struct {
-	From    time.Time          `json:"from"`
-	To      time.Time          `json:"to"`
-	Total   store.UsageAgg     `json:"total"`
-	Items   []store.UsageAgg   `json:"items"`
-	Series  []store.UsagePoint `json:"series"`
-	GroupBy string             `json:"group_by"`
+	From     time.Time          `json:"from"`
+	To       time.Time          `json:"to"`
+	Total    store.UsageAgg     `json:"total"`
+	Items    []store.UsageAgg   `json:"items"`
+	Series   []store.UsagePoint `json:"series"`
+	GroupBy  string             `json:"group_by"`
+	PeakNow  bool               `json:"peak_now"`
+	Timezone string             `json:"timezone"`
 }
 
 func (u *Usage) Range(fromText, toText string) (time.Time, time.Time, error) {
@@ -66,19 +68,28 @@ func (u *Usage) Overview(ctx context.Context, f store.UsageFilters, groupBy stri
 	if groupBy != "model" && groupBy != "user" && groupBy != "conv" {
 		return nil, BadRequest("BAD_GROUP", "group_by must be model, user or conv")
 	}
+	offset := f.Offset
+	if offset == "" {
+		offset = offsetString(u.s.Cfg.Location(), f.From)
+	}
+	f.Offset = offset
 	items, total, err := u.s.Store.UsageSummary(ctx, f, groupBy)
 	if err != nil {
 		return nil, Wrap(err, "usage summary")
 	}
-	offset := offsetString(u.s.Cfg.Location(), f.From)
 	series, err := u.s.Store.UsageSeries(ctx, f, offset, groupBy)
 	if err != nil {
 		return nil, Wrap(err, "usage series")
 	}
-	return &UsageOverview{From: f.From, To: f.To, Total: total, Items: items, Series: series, GroupBy: groupBy}, nil
+	loc := u.s.Cfg.Location()
+	return &UsageOverview{From: f.From, To: f.To, Total: total, Items: items, Series: series, GroupBy: groupBy,
+		PeakNow: peakAt(time.Now().UTC(), loc), Timezone: loc.String()}, nil
 }
 
 func (u *Usage) ExportCSV(ctx context.Context, f store.UsageFilters, meta Meta) ([]byte, int, error) {
+	if f.Offset == "" {
+		f.Offset = offsetString(u.s.Cfg.Location(), f.From)
+	}
 	rows, err := u.s.Store.UsageRows(ctx, f, 50000)
 	if err != nil {
 		return nil, 0, Wrap(err, "usage rows")
@@ -104,6 +115,9 @@ func (u *Usage) ExportCSV(ctx context.Context, f store.UsageFilters, meta Meta) 
 }
 
 func (u *Usage) Summary(ctx context.Context, f store.UsageFilters) (store.UsageAgg, error) {
+	if f.Offset == "" {
+		f.Offset = offsetString(u.s.Cfg.Location(), f.From)
+	}
 	_, total, err := u.s.Store.UsageSummary(ctx, f, "model")
 	return total, err
 }

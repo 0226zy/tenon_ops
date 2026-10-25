@@ -14,6 +14,20 @@ type UsageFilters struct {
 	Model  string
 	ConvID string
 	Limit  int
+	Offset string // display/business timezone offset, e.g. +08:00
+}
+
+func (f UsageFilters) offset() string {
+	v := f.Offset
+	if len(v) != 6 || (v[0] != '+' && v[0] != '-') || v[3] != ':' {
+		return "+08:00"
+	}
+	for _, i := range []int{1, 2, 4, 5} {
+		if v[i] < '0' || v[i] > '9' {
+			return "+08:00"
+		}
+	}
+	return v
 }
 
 func (f UsageFilters) where(alias string) (string, []any) {
@@ -41,7 +55,30 @@ func (s *Store) priceJoin() string {
 		SELECT MAX(p2.Feffective_from) FROM ` + p + ` p2 WHERE p2.Fmodel_id=u.Fmodel AND p2.Feffective_from<=u.Fcreate_time)`
 }
 
-const costExpr = `COALESCE(u.Fprompt_tokens/1000000*p.Finput_per_mtok + u.Fcompl_tokens/1000000*p.Foutput_per_mtok,0)`
+// peakExpr is true for Mon-Fri 09:00-12:00 and 14:00-18:00 in the business
+// timezone. Weekends and all other hours are off-peak.
+func (s *Store) peakExpr(f UsageFilters) string {
+	off := f.offset()
+	local := `CONVERT_TZ(u.Fcreate_time,'+00:00','` + off + `')`
+	t := `TIME(` + local + `)`
+	return `(WEEKDAY(` + local + `)<5 AND ((` + t + `>='09:00:00' AND ` + t + `<'12:00:00') OR (` + t + `>='14:00:00' AND ` + t + `<'18:00:00')))`
+}
+
+// cacheHitExpr returns cached prompt tokens when Tenon exposes them. The
+// current t_llm_usage schema has no such column, so it falls back to 0 (all
+// prompt tokens are treated as cache misses).
+func (s *Store) cacheHitExpr(alias string) string {
+	if s.usageCacheColumn == "" {
+		return "0"
+	}
+	return "LEAST(" + alias + ".Fprompt_tokens,GREATEST(" + alias + "." + s.usageCacheColumn + ",0))"
+}
+
+func (s *Store) costExpr(f UsageFilters) string {
+	hit := s.cacheHitExpr("u")
+	return `COALESCE((CASE WHEN ` + s.peakExpr(f) + ` THEN p.Fpeak_multiplier ELSE 1 END) * (((u.Fprompt_tokens-` + hit + `)/1000000)*p.Finput_per_mtok + (` + hit + `/1000000)*p.Fcache_hit_per_mtok + (u.Fcompl_tokens/1000000)*p.Foutput_per_mtok),0)`
+}
+
 const errExpr = `CASE WHEN u.Fhttp_status=0 OR u.Fhttp_status>=400 THEN 1 ELSE 0 END`
 const pricedExpr = `CASE WHEN p.Fid IS NULL THEN 0 ELSE 1 END`
 
@@ -57,7 +94,8 @@ func (s *Store) UsageSummary(ctx context.Context, f UsageFilters, groupBy string
 	default:
 		groupExpr, groupField = "u.Fmodel", "model"
 	}
-	q := `SELECT ` + groupExpr + `,COUNT(*),COALESCE(SUM(u.Fprompt_tokens),0),COALESCE(SUM(u.Fcompl_tokens),0),COALESCE(SUM(` + errExpr + `),0),COALESCE(SUM(` + costExpr + `),0),COALESCE(SUM(` + pricedExpr + `),0),COALESCE(AVG(u.Fcost_ms),0)
+	cost := s.costExpr(f)
+	q := `SELECT ` + groupExpr + `,COUNT(*),COALESCE(SUM(u.Fprompt_tokens),0),COALESCE(SUM(u.Fcompl_tokens),0),COALESCE(SUM(` + errExpr + `),0),COALESCE(SUM(` + cost + `),0),COALESCE(SUM(` + pricedExpr + `),0),COALESCE(AVG(u.Fcost_ms),0)
 		FROM ` + s.t("t_llm_usage") + ` u ` + s.priceJoin() + `
 		WHERE ` + where + ` GROUP BY ` + groupExpr + ` ORDER BY COALESCE(SUM(u.Fprompt_tokens+u.Fcompl_tokens),0) DESC LIMIT ?`
 	args = append(args, Limit(f.Limit, 100, 500))
@@ -91,7 +129,7 @@ func (s *Store) UsageSummary(ctx context.Context, f UsageFilters, groupBy string
 	if err := rows.Err(); err != nil {
 		return nil, UsageAgg{}, err
 	}
-	totalQ := `SELECT COUNT(*),COALESCE(SUM(u.Fprompt_tokens),0),COALESCE(SUM(u.Fcompl_tokens),0),COALESCE(SUM(` + errExpr + `),0),COALESCE(SUM(` + costExpr + `),0),COALESCE(SUM(` + pricedExpr + `),0),COALESCE(AVG(u.Fcost_ms),0)
+	totalQ := `SELECT COUNT(*),COALESCE(SUM(u.Fprompt_tokens),0),COALESCE(SUM(u.Fcompl_tokens),0),COALESCE(SUM(` + errExpr + `),0),COALESCE(SUM(` + cost + `),0),COALESCE(SUM(` + pricedExpr + `),0),COALESCE(AVG(u.Fcost_ms),0)
 		FROM ` + s.t("t_llm_usage") + ` u ` + s.priceJoin() + ` WHERE ` + where
 	var total UsageAgg
 	if err := s.db.QueryRowContext(ctx, totalQ, args[:len(args)-1]...).Scan(&total.Requests, &total.PromptTokens, &total.ComplTokens, &total.Errors, &total.Cost, &total.PricedRequests, &total.AvgMS); err != nil {
@@ -106,14 +144,16 @@ func (s *Store) UsageSummary(ctx context.Context, f UsageFilters, groupBy string
 }
 
 func (s *Store) UsageSeries(ctx context.Context, f UsageFilters, offset string, groupBy string) ([]UsagePoint, error) {
+	f.Offset = offset
 	where, args := f.where("u")
+	cost := s.costExpr(f)
 	modelExpr := "''"
 	modelGroup := ""
 	if groupBy == "model" {
 		modelExpr = "u.Fmodel"
 		modelGroup = ",u.Fmodel"
 	}
-	q := `SELECT DATE(CONVERT_TZ(u.Fcreate_time,'+00:00',?)) AS d,` + modelExpr + `,COUNT(*),COALESCE(SUM(u.Fprompt_tokens+u.Fcompl_tokens),0),COALESCE(SUM(` + errExpr + `),0),COALESCE(SUM(` + costExpr + `),0)
+	q := `SELECT DATE(CONVERT_TZ(u.Fcreate_time,'+00:00',?)) AS d,` + modelExpr + `,COUNT(*),COALESCE(SUM(u.Fprompt_tokens+u.Fcompl_tokens),0),COALESCE(SUM(` + errExpr + `),0),COALESCE(SUM(` + cost + `),0)
 		FROM ` + s.t("t_llm_usage") + ` u ` + s.priceJoin() + `
 		WHERE ` + where + ` GROUP BY d` + modelGroup + ` ORDER BY d`
 	args2 := append([]any{offset}, args...)
@@ -162,8 +202,9 @@ type UsageRow struct {
 
 func (s *Store) UsageRows(ctx context.Context, f UsageFilters, limit int) ([]UsageRow, error) {
 	where, args := f.where("u")
+	cost := s.costExpr(f)
 	limit = Limit(limit, 5000, 50000)
-	q := `SELECT u.Fcreate_time,u.Fuser_id,u.Fconv_id,u.Frun_id,u.Fmodel,u.Fprompt_tokens,u.Fcompl_tokens,u.Fcost_ms,u.Fhttp_status,` + costExpr + `,` + pricedExpr + `
+	q := `SELECT u.Fcreate_time,u.Fuser_id,u.Fconv_id,u.Frun_id,u.Fmodel,u.Fprompt_tokens,u.Fcompl_tokens,u.Fcost_ms,u.Fhttp_status,` + cost + `,` + pricedExpr + `
 		FROM ` + s.t("t_llm_usage") + ` u ` + s.priceJoin() + ` WHERE ` + where + ` ORDER BY u.Fid DESC LIMIT ?`
 	args = append(args, limit)
 	rows, err := s.db.QueryContext(ctx, q, args...)

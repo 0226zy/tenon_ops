@@ -85,7 +85,7 @@ func (r *Runs) Get(ctx context.Context, runID string) (*RunDetail, error) {
 	if err != nil {
 		return nil, Wrap(err, "run messages")
 	}
-	usage, err := r.s.Store.RunUsageRows(ctx, runID)
+	usage, err := r.s.Store.RunUsageRows(ctx, runID, offsetString(r.s.Cfg.Location(), time.Now()))
 	if err != nil {
 		return nil, Wrap(err, "run usage")
 	}
@@ -119,7 +119,7 @@ func (r *Runs) Usage(ctx context.Context, runID string) ([]store.UsageRow, error
 	if _, err := r.s.Store.RunByID(ctx, runID); err != nil {
 		return nil, Wrap(err, "get run")
 	}
-	return r.s.Store.RunUsageRows(ctx, runID)
+	return r.s.Store.RunUsageRows(ctx, runID, offsetString(r.s.Cfg.Location(), time.Now()))
 }
 
 func (r *Runs) Stats(ctx context.Context) (map[string]any, error) {
