@@ -1,5 +1,8 @@
 # Tenon Ops
 
+> Repository: <https://github.com/0226zy/tenon_ops>  
+> Status: P0 core implemented 2026-10-25. See “安全边界” and “已知限制” before exposing it.
+
 Tenon 的远程运维控制台：管理员登录、Tenon 用户开通、模型/Token 用量、活跃用户、Agent 任务执行轨迹、审计日志。
 
 技术栈与 Tenon 保持一致：
