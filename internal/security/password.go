@@ -43,7 +43,7 @@ func VerifyPassword(password string, pepper, salt, want []byte, params string) b
 	if _, err := fmt.Sscanf(params, "m=%d,t=%d,p=%d", &memory, &timeCost, &threads); err != nil {
 		return false
 	}
-	if memory < 8 || timeCost < 1 || threads < 1 || len(salt) == 0 || len(want) == 0 {
+	if memory < 8 || memory > 1<<20 || timeCost < 1 || timeCost > 10 || threads < 1 || threads > 16 || len(salt) == 0 || len(want) == 0 {
 		return false
 	}
 	mac := hmac.New(sha256.New, pepper)

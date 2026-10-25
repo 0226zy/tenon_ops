@@ -39,10 +39,10 @@ const error = ref('')
 const follow = ref(true)
 const expanded = ref<Set<string>>(new Set())
 const rawOpen = ref<Set<string>>(new Set())
+const eventHasMore = ref(false)
 let timer: number | undefined
 
 const id = computed(() => String(route.params.id || ''))
-const hasMore = computed(() => events.value.length >= 100 && !!next.value)
 const run = computed(() => detail.value?.run || null)
 const usageTotal = computed(() => (detail.value?.usage || []).reduce((acc, u) => ({ prompt: acc.prompt + u.prompt_tokens, completion: acc.completion + u.completion_tokens, cost: acc.cost + u.cost }), { prompt: 0, completion: 0, cost: 0 }))
 const messages = computed(() => detail.value?.messages || [])
@@ -118,6 +118,7 @@ async function loadEvents(reset = false, more = false) {
     const page = await api.runs.events(id.value, reset ? 0 : Number(next.value || 0), 100)
     events.value = reset || !more ? page.items : [...events.value, ...page.items]
     next.value = page.next_cursor
+    eventHasMore.value = page.items.length >= 100
     if (reset) {
       // auto-expand the terminal/error event and open raw for the first event
       const first = events.value[0]
@@ -260,7 +261,7 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer) })
               </div>
             </div>
           </div>
-          <div v-if="hasMore" class="table-foot" style="border-top:1px solid var(--line);margin-top:8px"><span>还有更早的事件</span><button class="btn btn-sm" :disabled="eventsLoading" @click="loadEvents(false, true)"><Loader2 v-if="eventsLoading" :size="13" class="spin" /> 加载更多</button></div>
+          <div v-if="eventHasMore" class="table-foot" style="border-top:1px solid var(--line);margin-top:8px"><span>还有更早的事件</span><button class="btn btn-sm" :disabled="eventsLoading" @click="loadEvents(false, true)"><Loader2 v-if="eventsLoading" :size="13" class="spin" /> 加载更多</button></div>
         </div>
       </section>
 

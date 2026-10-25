@@ -1,0 +1,1 @@
+import{d as s,b as a,q as n,i as d,N as l,n as t}from"./index-2PRALCfQ.js";const r={key:0,class:"dot"},p=s({__name:"Badge",props:{tone:{default:"gray"},dot:{type:Boolean,default:!1}},setup(e){return(o,c)=>(t(),a("span",{class:n(["badge",`badge-${e.tone}`])},[e.dot?(t(),a("span",r)):d("",!0),l(o.$slots,"default")],2))}});export{p as _};
