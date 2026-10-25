@@ -242,6 +242,8 @@ export interface Dashboard {
   today_requests: number
   today_tokens: number
   today_cost: number
+  today_priced_requests: number
+  today_unpriced_requests: number
   today_errors: number
   error_rate: number
   usage_series: UsagePoint[]

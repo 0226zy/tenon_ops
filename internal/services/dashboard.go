@@ -21,6 +21,8 @@ type DashboardSummary struct {
 	TodayRequests  int64              `json:"today_requests"`
 	TodayTokens    int64              `json:"today_tokens"`
 	TodayCost      float64            `json:"today_cost"`
+	TodayPriced    int64              `json:"today_priced_requests"`
+	TodayUnpriced  int64              `json:"today_unpriced_requests"`
 	TodayErrors    int64              `json:"today_errors"`
 	ErrorRate      float64            `json:"error_rate"`
 	UsageSeries    []store.UsagePoint `json:"usage_series"`
@@ -95,7 +97,9 @@ func (d *Dashboard) Summary(ctx context.Context) (*DashboardSummary, error) {
 	return &DashboardSummary{
 		UsersTotal: totalUsers, UsersDisabled: disabled, UsersNew7d: new7d, UsersUnmanaged: unmanaged,
 		ActiveUsers15m: len(presence.Items), ActiveRuns: activeRuns, RunStatus24h: statusCounts, P95Duration: p95,
-		TodayRequests: today.Requests, TodayTokens: today.TotalTokens, TodayCost: today.Cost, TodayErrors: today.Errors, ErrorRate: today.ErrorRate,
+		TodayRequests: today.Requests, TodayTokens: today.TotalTokens, TodayCost: today.Cost,
+		TodayPriced: today.PricedRequests, TodayUnpriced: today.UnpricedRequests,
+		TodayErrors: today.Errors, ErrorRate: today.ErrorRate,
 		UsageSeries: series, TopModels: topModels, TopUsers: userItems, RecentFailures: failures,
 		AsOf: now, DataThrough: dataThrough,
 	}, nil

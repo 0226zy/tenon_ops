@@ -99,9 +99,9 @@ onBeforeUnmount(() => { if (timer) window.clearInterval(timer) })
           <template #icon><Zap :size="13" /></template>
           <template #meta><span>{{ fmtInt(data.today_requests) }} 次模型请求</span><span>·</span><span>错误率 {{ ((data.error_rate || 0) * 100).toFixed(1) }}%</span></template>
         </StatCard>
-        <StatCard label="今日估算成本" :value="fmtCost(data.today_cost)" tone="warning">
+        <StatCard label="今日估算成本" :value="data.today_unpriced_requests > 0 && data.today_priced_requests === 0 ? '未定价' : fmtCost(data.today_cost)" tone="warning">
           <template #icon><Coins :size="13" /></template>
-          <template #meta><span>按模型价格表估算，非供应商账单</span></template>
+          <template #meta><span>{{ data.today_unpriced_requests > 0 ? `${data.today_unpriced_requests} 个请求未定价` : '按模型价格表估算，非供应商账单' }}</span></template>
         </StatCard>
       </div>
 

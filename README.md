@@ -28,6 +28,12 @@ Tenon 的远程运维控制台：管理员登录、Tenon 用户开通、模型/T
 |---|
 | ![用户](docs/screenshots/users.png) |
 
+### 真实远程部署
+
+`tenon_prod`、远程 MySQL、systemd 服务、经 SSH 隧道访问的真实数据：
+
+![远程总览](docs/screenshots/remote-dashboard.png)
+
 ## 功能
 
 | 模块 | 已实现 |
