@@ -1,0 +1,37 @@
+# Local development / break-glass configuration.
+# The Go process runs on 127.0.0.1:7200; Vite dev server is 127.0.0.1:7201.
+# Set TENON_OPS_DSN to your dev MySQL DSN before starting.
+mode: local
+exposure: private
+environment: tenon_dev
+listen: 127.0.0.1:7200
+public_url: http://127.0.0.1:7200
+timezone: Asia/Shanghai
+
+db:
+  dsn_env: TENON_OPS_DSN
+  admin_schema: tenon_admin
+  tenon_schema: tenon_prod
+  max_open: 5
+  max_idle: 2
+
+security:
+  keys_dir: ./.local/keys
+  cookie_secure: false
+  allowed_origins:
+    - "http://127.0.0.1:7200"
+    - "http://127.0.0.1:7201"
+    - "http://localhost:7200"
+    - "http://localhost:7201"
+  allowed_hosts:
+    - "127.0.0.1:7200"
+    - "127.0.0.1:7201"
+    - "localhost:7200"
+    - "localhost:7201"
+  trusted_proxies:
+    - "127.0.0.1"
+    - "::1"
+
+ui:
+  product_name: Tenon Ops
+  version: 0.1.0

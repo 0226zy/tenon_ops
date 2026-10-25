@@ -1,0 +1,33 @@
+[Unit]
+Description=Tenon Ops control console
+Documentation=https://github.com/0226zy/tenon_ops
+After=network-online.target mysql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=tenon-ops
+Group=tenon-ops
+UMask=0077
+EnvironmentFile=/etc/tenon-ops/env
+LoadCredential=master:/etc/tenon-ops/keys/master.key
+ExecStart=/usr/local/bin/tenon-ops serve --config /etc/tenon-ops/config.yaml
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+StateDirectory=tenon-ops
+LogsDirectory=tenon-ops
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

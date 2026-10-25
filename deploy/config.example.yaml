@@ -1,0 +1,47 @@
+# tenon_ops production configuration (remote server).
+# Secrets are NOT in this file: put TENON_OPS_DSN in /etc/tenon-ops/env (0600),
+# and master.key in /etc/tenon-ops/keys/master.key (0600 / systemd credential).
+
+mode: remote
+exposure: private          # private | public (public requires MFA; this build refuses public unless allow_public_without_mfa=true)
+environment: tenon_prod
+listen: 127.0.0.1:7200
+public_url: https://admin.example.com
+timezone: Asia/Shanghai
+
+db:
+  dsn_env: TENON_OPS_DSN
+  admin_schema: tenon_admin
+  tenon_schema: tenon_prod
+  max_open: 10
+  max_idle: 3
+
+security:
+  keys_dir: /etc/tenon-ops/keys
+  cookie_secure: true
+  session_ttl: 8h
+  idle_ttl: 30m
+  step_up_ttl: 5m
+  login_fail_limit: 5
+  login_lock: 15m
+  trusted_proxies:
+    - "127.0.0.1"
+    - "::1"
+  allowed_origins:
+    - "https://admin.example.com"
+  allowed_hosts:
+    - "admin.example.com"
+  # Public mode is blocked until MFA is implemented. Put the service behind
+  # VPN/IP allowlist, or explicitly accept the risk for a short internal trial.
+  allow_public_without_mfa: false
+  # Require step-up for user create/reset/disable when exposed to other users.
+  require_step_up_writes: false
+
+tenon:
+  # Optional: path on the server for manual import reference. The admin UI
+  # currently accepts YAML upload/paste; it never reads Tenon env secrets.
+  catalog_file: /data/server/config/models.yaml
+
+ui:
+  product_name: Tenon Ops
+  version: 0.1.0

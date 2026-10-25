@@ -1,0 +1,21 @@
+# build outputs
+/bin/
+/dist/
+web/dist/
+# dependencies
+web/node_modules/
+node_modules/
+# local caches
+.gocache/
+.npm-cache/
+.npm-logs/
+# secrets and local data
+.env
+.local/
+tenon-ops-bootstrap/
+*.log
+.DS_Store
+
+# The Vue build is intentionally committed because it is embedded in the Go binary.
+!internal/web/dist/
+!internal/web/dist/**
